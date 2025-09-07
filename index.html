@@ -1,0 +1,160 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>MAGARCHEL — Tienda</title>
+  <meta name="description" content="MAGARCHEL - Catálogo de joyas, ropa, relojes y accesorios" />
+  <script>
+    (function(){
+      const VERSION = "v2.0.0";
+      const saved = localStorage.getItem("magarchel_version");
+      if(saved !== VERSION){
+        localStorage.setItem("magarchel_version", VERSION);
+        if(saved !== null){
+          caches.keys().then(keys => keys.forEach(k => caches.delete(k)));
+          localStorage.clear();
+          sessionStorage.clear();
+          location.reload();
+        }
+      }
+    })();
+  </script>
+  <style>
+    body{font-family:Arial,sans-serif;margin:0;padding:0;background:#f7f7fb}
+    header{display:flex;justify-content:space-between;align-items:center;padding:12px 16px;border-bottom:1px solid #ddd;background:#fff}
+    .brand{display:flex;align-items:center;gap:10px}
+    .logo{width:44px;height:44px;border-radius:8px;background:linear-gradient(135deg,#6b21a8,#9f7aea);display:flex;align-items:center;justify-content:center;color:#fff;font-weight:bold;font-size:18px}
+    nav{display:flex;align-items:center;gap:12px}
+    .search input{padding:8px;border-radius:8px;border:1px solid #ccc;width:200px}
+    .categories{display:flex;flex-wrap:wrap;gap:8px;margin:12px 0}
+    .cat{padding:6px 12px;border-radius:999px;border:1px solid #ccc;background:#fff;cursor:pointer}
+    .products-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:16px;padding:16px}
+    .card{background:#fff;padding:12px;border-radius:12px;box-shadow:0 2px 6px rgba(0,0,0,0.1)}
+    .card img{width:100%;height:160px;object-fit:cover;border-radius:8px}
+    .card .title{font-weight:bold;margin:8px 0}
+    .price{color:#6b21a8;font-weight:bold}
+    .btn{background:#6b21a8;color:#fff;padding:6px 10px;border:none;border-radius:8px;cursor:pointer}
+    .btn:hover{background:#581c87}
+    .drawer{position:fixed;right:0;top:0;height:100vh;width:320px;background:#fff;box-shadow:-4px 0 12px rgba(0,0,0,0.2);transform:translateX(100%);transition:.3s;padding:16px;overflow:auto;z-index:1000}
+    .drawer.open{transform:translateX(0)}
+    .cart-btn{position:relative;cursor:pointer}
+    .cart-count{position:absolute;top:-6px;right:-6px;background:red;color:#fff;font-size:12px;border-radius:50%;padding:2px 6px}
+    footer{text-align:center;padding:16px;color:#555;background:#fff;margin-top:20px}
+    .whatsapp-btn{position:fixed;bottom:20px;right:20px;background:#25D366;color:#fff;font-size:24px;border-radius:50%;padding:14px;cursor:pointer;box-shadow:0 4px 10px rgba(0,0,0,0.2);z-index:1100}
+  </style>
+</head>
+<body>
+  <header>
+    <div class="brand">
+      <div class="logo">MG</div>
+      <div>
+        <div style="font-weight:bold">MAGARCHEL</div>
+        <div style="font-size:12px;color:#555">Joyas, ropa y accesorios</div>
+      </div>
+    </div>
+    <div class="search"><input id="searchInput" placeholder="Buscar productos..."></div>
+    <nav>
+      <div id="cartBtn" class="cart-btn">🛒<span id="cartCount" class="cart-count" style="display:none">0</span></div>
+    </nav>
+  </header>
+
+  <section class="categories" id="categories"></section>
+  <main>
+    <section id="products" class="products-grid"></section>
+    <div id="emptyMsg" style="display:none;text-align:center;color:#777;padding:20px">No se encontraron productos.</div>
+  </main>
+
+  <footer>© <span id="year"></span> MAGARCHEL — Atención personalizada</footer>
+
+  <aside id="cartDrawer" class="drawer">
+    <h3>Carrito</h3>
+    <div id="cartList"></div>
+    <div style="margin-top:16px;display:flex;justify-content:space-between;align-items:center">
+      <div><div style="font-size:14px;color:#555">Total</div><div id="cartTotal" style="font-weight:bold;font-size:18px">S/ 0.00</div></div>
+      <div><button class="btn" id="checkoutBtn">Enviar WhatsApp</button></div>
+    </div>
+  </aside>
+
+  <a href="#" id="whatsappBtn" target="_blank" class="whatsapp-btn">💬</a>
+
+  <script>
+    const PRODUCTS=[
+      {id:'j1',title:'Collar Elegante Mujer',price:120,category:'Joyas Mujer',img:'images/collar.jpg'},
+      {id:'j2',title:'Aretes de Perla',price:80,category:'Joyas Mujer',img:'images/aretes.jpg'},
+      {id:'j3',title:'Pulsera Plata',price:95,category:'Joyas Mujer',img:'images/pulsera.jpg'},
+
+      {id:'h1',title:'Camisa Casual Hombre',price:150,category:'Ropa Hombre',img:'images/camisa.jpg'},
+      {id:'h2',title:'Pantalón Chino Hombre',price:200,category:'Ropa Hombre',img:'images/pantalon.jpg'},
+      {id:'h3',title:'Chaqueta Cuero Hombre',price:300,category:'Ropa Hombre',img:'images/chaqueta.jpg'},
+
+      {id:'m1',title:'Vestido Elegante Mujer',price:180,category:'Ropa Mujer',img:'images/vestido.jpg'},
+      {id:'m2',title:'Falda Casual Mujer',price:130,category:'Ropa Mujer',img:'images/falda.jpg'},
+      {id:'m3',title:'Blusa Formal Mujer',price:160,category:'Ropa Mujer',img:'images/blusa.jpg'},
+
+      {id:'r1',title:'Reloj Classic',price:400,category:'Relojes',img:'images/reloj1.jpg'},
+      {id:'r2',title:'Reloj Deportivo',price:500,category:'Relojes',img:'images/reloj2.jpg'},
+      {id:'r3',title:'Smartwatch',price:600,category:'Relojes',img:'images/reloj3.jpg'},
+
+      {id:'a1',title:'Gafas de Sol',price:100,category:'Accesorios',img:'images/gafas.jpg'},
+      {id:'a2',title:'Cinturón Cuero',price:120,category:'Accesorios',img:'images/cinturon.jpg'},
+      {id:'a3',title:'Bolso de Mano',price:220,category:'Accesorios',img:'images/bolso.jpg'}
+    ];
+
+    const categories=[...new Set(PRODUCTS.map(p=>p.category))];
+    const productsEl=document.getElementById('products');
+    const categoriesEl=document.getElementById('categories');
+    const searchInput=document.getElementById('searchInput');
+    const cartBtn=document.getElementById('cartBtn');
+    const cartDrawer=document.getElementById('cartDrawer');
+    const cartList=document.getElementById('cartList');
+    const cartTotal=document.getElementById('cartTotal');
+    const cartCount=document.getElementById('cartCount');
+    const checkoutBtn=document.getElementById('checkoutBtn');
+    document.getElementById('year').textContent=new Date().getFullYear();
+
+    function renderCategories(){
+      categoriesEl.innerHTML='<button class="cat" onclick="filterAndRender()">Todos</button>';
+      categories.forEach(c=>{categoriesEl.innerHTML+=`<button class="cat" onclick="filterAndRender('${c}')">${c}</button>`});
+    }
+    function currency(v){return 'S/ '+v.toFixed(2)}
+    function renderProducts(list){
+      productsEl.innerHTML='';
+      if(!list.length){document.getElementById('emptyMsg').style.display='block';return}
+      document.getElementById('emptyMsg').style.display='none';
+      list.forEach(p=>{
+        productsEl.innerHTML+=`
+        <div class="card">
+          <img src="${p.img}" alt="${p.title}"/>
+          <div class="title">${p.title}</div>
+          <div style="display:flex;justify-content:space-between;align-items:center">
+            <div class="price">${currency(p.price)}</div>
+            <button class="btn" onclick="addToCart('${p.id}')">Agregar</button>
+          </div>
+        </div>`
+      });
+    }
+    function filterAndRender(category,query){
+      let list=PRODUCTS.slice();
+      if(category)list=list.filter(p=>p.category===category);
+      const q=(query||searchInput.value||'').toLowerCase();
+      if(q)list=list.filter(p=>p.title.toLowerCase().includes(q)||p.category.toLowerCase().includes(q));
+      renderProducts(list);
+    }
+    function getCart(){return JSON.parse(localStorage.getItem('magarchel_cart')||'[]')}
+    function saveCart(c){localStorage.setItem('magarchel_cart',JSON.stringify(c));renderCart()}
+    function addToCart(id){const p=PRODUCTS.find(x=>x.id===id);if(!p)return;let c=getCart();let i=c.find(x=>x.id===id);if(i)i.qty++;else c.push({id:p.id,title:p.title,price:p.price,qty:1});saveCart(c);showCartDrawer()}
+    function removeFromCart(id){saveCart(getCart().filter(i=>i.id!==id))}
+    function changeQty(id,qty){let c=getCart();let i=c.find(x=>x.id===id);if(!i)return;i.qty=qty;if(i.qty<1)removeFromCart(id);else saveCart(c)}
+    function renderCart(){const c=getCart();cartList.innerHTML='';let total=0,count=0;c.forEach(i=>{total+=i.price*i.qty;count+=i.qty;cartList.innerHTML+=`
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">
+        <div><div style="font-weight:bold">${i.title}</div><div style="font-size:12px;color:#555">S/ ${i.price.toFixed(2)} x ${i.qty}</div></div>
+        <div><button onclick="changeQty('${i.id}',${i.qty-1})">-</button> ${i.qty} <button onclick="changeQty('${i.id}',${i.qty+1})">+</button> <button onclick="removeFromCart('${i.id}')">❌</button></div>
+      </div>`});cartTotal.textContent=currency(total);if(count>0){cartCount.style.display='inline-block';cartCount.textContent=count}else cartCount.style.display='none'}
+    function showCartDrawer(){cartDrawer.classList.add('open');renderCart()}
+    cartBtn.onclick=showCartDrawer;
+    checkoutBtn.onclick=()=>{const c=getCart();if(!c.length){alert('Carrito vacío');return}let msg='Hola MAGARCHEL, quiero comprar:%0A';c.forEach(i=>{msg+=`- ${i.title} x${i.qty}%0A`});msg+=`Total: ${cartTotal.textContent}`;window.open(`https://wa.me/51987654321?text=${msg}`,'_blank')}
+    renderCategories();filterAndRender();
+  </script>
+</body>
+</html>
